@@ -105,6 +105,18 @@ import UIKit
     case linkedBalls
 }
 
+/// Set `optionMultipleDateOutputFormat` with one of the following:
+///
+/// `English`: Displayed as "EEE', 'd' 'MMM' 'yyyy": for example, Tue, 17 Jul 2018
+///
+/// `Japanese`: "yyyy'年 'MMM' 'd'日 'EEE": for example, 2018年 7月 15日 日
+@objc public enum WWCalendarTimeSelectorMultipleDateOutputFormat: Int {
+    /// English format
+    case english
+    /// Japanese format
+    case japanese
+}
+
 /// Set `optionTimeStep` to customise the period of time which the users will be able to choose. The step will show the user the available minutes to select (with exception of `OneMinute` step, see *Note*).
 ///
 /// - Note:
@@ -376,6 +388,8 @@ open class WWCalendarTimeSelector: UIViewController, UITableViewDelegate, UITabl
     /// Selector will show the earliest selected date's month by default.
     open var optionCurrentDateRange: WWCalendarTimeSelectorDateRange = WWCalendarTimeSelectorDateRange()
     
+    open var optionEnabledDates: Set<Date> = []
+    
     open var optionRangeOfEnabledDates: WWCalendarTimeSelectorEnabledDateRange = WWCalendarTimeSelectorEnabledDateRange()
     
     /// Set the background blur effect, where background is a `UIVisualEffectView`. Available options are as `UIBlurEffectStyle`:
@@ -396,6 +410,12 @@ open class WWCalendarTimeSelector: UIViewController, UITableViewDelegate, UITabl
     /// `LinkedBalls`: Smaller circular selection, with a bar connecting adjacent dates.
     open var optionMultipleSelectionGrouping: WWCalendarTimeSelectorMultipleSelectionGrouping = .pill
     
+    /// Set `optionMultipleDateOutputFormat` with one of the following:
+    ///
+    /// `English`: Displayed as "EEE', 'd' 'MMM' 'yyyy": for example, Tue, 17 Jul 2018
+    ///
+    /// `Japanese`: "yyyy', 'MMM' 'd' 'EEE": for example, 2018, 7月 13 火
+    open var optionMultipleDateOutputFormat: WWCalendarTimeSelectorMultipleDateOutputFormat = .english
     
     // Fonts & Colors
     open var optionCalendarFontMonth = UIFont.systemFont(ofSize: 14)
@@ -1749,7 +1769,15 @@ open class WWCalendarTimeSelector: UIViewController, UITableViewDelegate, UITabl
             let date = multipleDates[(indexPath as NSIndexPath).row]
             cell.textLabel?.font = date == multipleDatesLastAdded ? optionSelectorPanelFontMultipleSelectionHighlight : optionSelectorPanelFontMultipleSelection
             cell.textLabel?.textColor = date == multipleDatesLastAdded ? optionSelectorPanelFontColorMultipleSelectionHighlight : optionSelectorPanelFontColorMultipleSelection
-            cell.textLabel?.text = date.stringFromFormat("EEE', 'd' 'MMM' 'yyyy")
+
+            // output date format
+            switch optionMultipleDateOutputFormat {
+            case .english:
+                cell.textLabel?.text = date.stringFromFormat("EEE', 'd' 'MMM' 'yyyy")
+            case .japanese:
+                cell.textLabel?.text = date.stringFromFormat("yyyy'年 'MMM' 'd'日 'EEE")
+            }
+            
         }
         
         return cell
@@ -1837,6 +1865,12 @@ open class WWCalendarTimeSelector: UIViewController, UITableViewDelegate, UITabl
     }
     
     internal func WWCalendarRowDateIsEnable(_ date: Date) -> Bool {
+        if !optionEnabledDates.isEmpty &&
+            !optionEnabledDates.contains(where: { (inputDate) -> Bool in
+                return NSCalendar.current.compare(date, to: inputDate, toGranularity: .day) == .orderedSame
+            }) {
+            return false
+        }
         if let fromDate = optionRangeOfEnabledDates.start,
             date.compare(fromDate) == .orderedAscending {
             return false
